@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faculty Feedback Dashboard — Nursing College</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #17171f;
+    --card: #1e1e2a;
+    --border: #2a2a3a;
+    --accent1: #e8a87c;
+    --accent2: #7ec8c8;
+    --accent3: #b484e8;
+    --text: #f0eeea;
+    --muted: #8a8a9a;
+    --danger: #e87c7c;
+    --good: #7ce8a8;
+    --warn: #e8d07c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 1300px; margin: 0 auto; padding: 32px 24px 60px; }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .header-left .badge {
+    display: inline-block;
+    background: rgba(232,168,124,0.12);
+    color: var(--accent1);
+    border: 1px solid rgba(232,168,124,0.25);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .header-left h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .header-left p {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 13px;
+  }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 7px 16px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    transition: all 0.18s;
+  }
+  .filter-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .filter-btn.active { background: rgba(126,200,200,0.12); border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
+
+  /* Stats row */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.accent1::before { background: var(--accent1); }
+  .stat-card.accent2::before { background: var(--accent2); }
+  .stat-card.accent3::before { background: var(--accent3); }
+  .stat-card.danger::before { background: var(--danger); }
+  .stat-card.good::before { background: var(--good); }
+
+  .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 4px 0 2px;
+  }
+  .stat-sub { color: var(--muted); font-size: 11px; }
+
+  /* Charts grid */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .charts-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .charts-grid.full { grid-template-columns: 1fr; }
+
+  @media (max-width: 900px) {
+    .charts-grid, .charts-grid.three { grid-template-columns: 1fr; }
+  }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .chart-card.span2 { grid-column: span 2; }
+  @media (max-width: 900px) { .chart-card.span2 { grid-column: span 1; } }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+  .card-title span {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { display: block; }
+
+  /* Score badge inline */
+  .score-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .score-low { background: rgba(232,124,124,0.15); color: var(--danger); }
+  .score-mid { background: rgba(232,208,124,0.15); color: var(--warn); }
+  .score-high { background: rgba(124,232,168,0.15); color: var(--good); }
+
+  /* Comparison table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .compare-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(42,42,58,0.5);
+    vertical-align: middle;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .bar-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(.16,1,.3,1);
+  }
+
+  /* Suggestions section */
+  .suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .suggestions-list::-webkit-scrollbar { width: 4px; }
+  .suggestions-list::-webkit-scrollbar-track { background: transparent; }
+  .suggestions-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .suggestion-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text);
+    border-left: 3px solid var(--accent3);
+    line-height: 1.5;
+  }
+  .suggestion-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    display: flex;
+    gap: 8px;
+  }
+  .suggestion-meta .tag {
+    background: rgba(180,132,232,0.1);
+    color: var(--accent3);
+    border-radius: 3px;
+    padding: 1px 6px;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Score scale info */
+  .scale-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 10px;
+    text-align: right;
+  }
+
+  /* Tab system */
+  .tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tab-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .tab-btn.active { background: var(--surface); color: var(--accent1); border-color: var(--accent1); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin: 10px 0 18px;
+  }
+
+  /* Rating scale legend */
+  .rating-legend {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .rating-item {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .insight-box {
+    background: rgba(232,168,124,0.06);
+    border: 1px solid rgba(232,168,124,0.2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-top: 14px;
+  }
+  .insight-box strong { color: var(--accent1); }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="badge">Academic Year Analysis</div>
+      <h1>Faculty Feedback Dashboard</h1>
+      <p>Student evaluations — Nursing College &nbsp;·&nbsp; 248 responses across 4 courses</p>
+      <div class="rating-legend">
+        <span class="rating-item">1 = Poor</span>
+        <span class="rating-item">2 = Below Average</span>
+        <span class="rating-item">3 = Average</span>
+        <span class="rating-item">4 = Good</span>
+        <span class="rating-item">5 = Excellent</span>
+      </div>
+    </div>
+    <div class="filters" id="facultyFilters">
+      <button class="filter-btn active" data-faculty="All">All Faculty</button>
+      <button class="filter-btn" data-faculty="Ms. Kiran Tripathi">Ms. Kiran Tripathi</button>
+      <button class="filter-btn" data-faculty="Ms. Smriti">Ms. Smriti</button>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="categories">By Category</button>
+    <button class="tab-btn" data-tab="questions">All Questions</button>
+    <button class="tab-btn" data-tab="courses">By Course</button>
+    <button class="tab-btn" data-tab="suggestions">Student Feedback</button>
+  </div>
+
+  <!-- Overview Tab -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="card-title">Score Distribution<span>How students rated overall</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="distChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Category Scores<span>Average by feedback dimension</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catRadarChart"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid full">
+      <div class="chart-card">
+        <div class="card-title">Faculty Comparison — All Criteria<span>Side-by-side average scores</span></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#e8a87c"></div>Ms. Kiran Tripathi</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#7ec8c8"></div>Ms. Smriti</div>
+        </div>
+        <div class="chart-wrap" style="height:360px"><canvas id="compareChart"></canvas></div>
+        <p class="scale-note">Scale: 1 (Poor) — 5 (Excellent)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Tab -->
+  <div class="tab-panel" id="tab-categories">
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="card-title">Teaching Quality<span>Creativity, interest, methodology</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catTeachChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Classroom Management<span>Discipline, inclusion, punctuality</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catClassChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Communication<span>Respect, tone, approachability</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catCommChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Subject Knowledge<span>Expertise and accuracy</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catKnowChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Assessment & Evaluation<span>Grading, feedback, transparency</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catAssChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Professionalism<span>Behaviour, inspiration, role model</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="catProfChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Questions Tab -->
+  <div class="tab-panel" id="tab-questions">
+    <div class="chart-card">
+      <div class="card-title">Question-wise Averages<span>Detailed breakdown — all 20 criteria</span></div>
+      <div id="questionsTable"></div>
+    </div>
+  </div>
+
+  <!-- Courses Tab -->
+  <div class="tab-panel" id="tab-courses">
+    <div class="charts-grid">
+      <div class="chart-card span2">
+        <div class="card-title">Performance by Course<span>Average score per faculty per class</span></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="courseChart"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="card-title">Response Count<span>Number of students who responded</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="responseChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Score Polarity<span>% of low (1-2) vs high (4-5) scores</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="polarityChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions Tab -->
+  <div class="tab-panel" id="tab-suggestions">
+    <div class="chart-card">
+      <div class="card-title">Student Suggestions & Comments<span>Open-ended feedback from students</span></div>
+      <div class="suggestions-list" id="suggestionsList"></div>
+      <div class="insight-box" id="insightBox"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+const RAW = {
+  faculty: {
+    "Ms. Kiran Tripathi": {
+      n: 152,
+      overall: 2.48,
+      scores: {
+        "Use of real life examples": 2.3,
+        "Makes subject interesting": 2.03,
+        "Constructive feedback": 2.16,
+        "Maintains discipline": 2.73,
+        "Positive learning environment": 2.34,
+        "Equal participation": 2.66,
+        "Talks with respect": 3.19,
+        "Body language & tone": 2.78,
+        "Approachable & open to queries": 2.27,
+        "Subject knowledge": 2.24,
+        "Teaching methodology": 2.21,
+        "Well-prepared for class": 2.18,
+        "Answers accurately": 2.20,
+        "Fair & unbiased grading": 2.57,
+        "Timely performance feedback": 2.38,
+        "Transparent evaluation": 2.36,
+        "Punctuality & regularity": 3.03,
+        "Professional behaviour": 2.88,
+        "Inspires confidence": 2.53,
+        "Role model in ethics": 2.26
+      },
+      dist: { 1: 1122, 2: 580, 3: 518, 4: 443, 5: 377 },
+      categories: {
+        "Teaching Quality": 2.18,
+        "Classroom Management": 2.69,
+        "Communication": 2.75,
+        "Subject Knowledge": 2.22,
+        "Assessment & Evaluation": 2.44,
+        "Professionalism": 2.55
+      },
+      courses: {
+        "GNM I Year": { mean: 3.20, n: 65 },
+        "B.Sc. V Sem.": { mean: 1.66, n: 49 },
+        "GNM III Year": { mean: 2.24, n: 38 }
+      }
+    },
+    "Ms. Smriti": {
+      n: 96,
+      overall: 2.73,
+      scores: {
+        "Use of real life examples": 2.36,
+        "Makes subject interesting": 2.33,
+        "Constructive feedback": 2.39,
+        "Maintains discipline": 3.03,
+        "Positive learning environment": 2.53,
+        "Equal participation": 2.64,
+        "Talks with respect": 3.30,
+        "Body language & tone": 2.99,
+        "Approachable & open to queries": 2.62,
+        "Subject knowledge": 2.44,
+        "Teaching methodology": 2.43,
+        "Well-prepared for class": 2.73,
+        "Answers accurately": 2.60,
+        "Fair & unbiased grading": 2.98,
+        "Timely performance feedback": 2.55,
+        "Transparent evaluation": 2.74,
+        "Punctuality & regularity": 3.39,
+        "Professional behaviour": 3.04,
+        "Inspires confidence": 2.61,
+        "Role model in ethics": 2.57
+      },
+      dist: { 1: 558, 2: 387, 3: 381, 4: 234, 5: 360 },
+      categories: {
+        "Teaching Quality": 2.45,
+        "Classroom Management": 2.90,
+        "Communication": 2.97,
+        "Subject Knowledge": 2.52,
+        "Assessment & Evaluation": 2.76,
+        "Professionalism": 2.74
+      },
+      courses: {
+        "B.Sc. V Sem.": { mean: 3.33, n: 48 },
+        "B.Sc. III Sem. Sec. A": { mean: 2.10, n: 48 }
+      }
+    }
+  },
+  suggestions: [
+    { text: "Her teaching style is lacking — needs much improvement. Should come with better examples.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Teaching style is not good.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Please clear doubts and be better prepared for sociology lectures.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Ma'am teaches greatly but does not know how to teach effectively.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Needs improvement in communication and doubt-clearing.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Need much improvement.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Respect all students.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Need much improvement. Please try to clear students' doubts rather than asking other students the same doubt. Ma'am gives wrong meanings of sentences and words.", faculty: "Ms. Kiran Tripathi", course: "GNM I Year" },
+    { text: "Could surely use more AV aids and prior class preparation, rather than opening any PPT from the internet.", faculty: "Ms. Kiran Tripathi", course: "B.Sc. V Sem." },
+    { text: "She doesn't know how to manage the class or make it interesting — just reads from PPT.", faculty: "Ms. Kiran Tripathi", course: "B.Sc. V Sem." },
+    { text: "Please improve how you deal with students. Behaviour is not acceptable.", faculty: "Ms. Kiran Tripathi", course: "B.Sc. V Sem." },
+    { text: "We need clarity in teaching and better syllabus coverage.", faculty: "Ms. Kiran Tripathi", course: "GNM III Year" },
+    { text: "Please make the class interactive and use real examples.", faculty: "Ms. Kiran Tripathi", course: "GNM III Year" },
+    { text: "Very good teaching and good behaviour. Very clear in explaining topics.", faculty: "Ms. Smriti", course: "B.Sc. V Sem." },
+    { text: "Good at teaching and explaining doubts. Please continue the same way.", faculty: "Ms. Smriti", course: "B.Sc. V Sem." },
+    { text: "Teaches well but sometimes goes too fast. More practice questions needed.", faculty: "Ms. Smriti", course: "B.Sc. III Sem. Sec. A" },
+    { text: "Should use more practical examples and clinical case studies.", faculty: "Ms. Smriti", course: "B.Sc. III Sem. Sec. A" },
+    { text: "Improvement needed in classroom interaction and feedback on assignments.", faculty: "Ms. Smriti", course: "B.Sc. III Sem. Sec. A" }
+  ]
+};
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+let currentFaculty = "All";
+
+function getFacultyList() {
+  return currentFaculty === "All" ? Object.keys(RAW.faculty) : [currentFaculty];
+}
+
+function getAggregated(key) {
+  const list = getFacultyList();
+  if (list.length === 1) return RAW.faculty[list[0]][key];
+  // Weighted average for numeric objects
+  const result = {};
+  const ns = list.map(f => RAW.faculty[f].n);
+  const total = ns.reduce((a,b)=>a+b,0);
+  list.forEach((f, i) => {
+    const data = RAW.faculty[f][key];
+    Object.keys(data).forEach(k => {
+      result[k] = (result[k] || 0) + data[k] * ns[i] / total;
+    });
+  });
+  return result;
+}
+
+function scoreColor(v) {
+  if (v >= 4) return '#7ce8a8';
+  if (v >= 3) return '#e8d07c';
+  return '#e87c7c';
+}
+
+function scoreClass(v) {
+  if (v >= 4) return 'score-high';
+  if (v >= 3) return 'score-mid';
+  return 'score-low';
+}
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e1e2a', titleColor: '#f0eeea', bodyColor: '#8a8a9a', borderColor: '#2a2a3a', borderWidth: 1 } }
+};
+
+const COLOR1 = '#e8a87c';
+const COLOR2 = '#7ec8c8';
+const COLOR3 = '#b484e8';
+
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ── STATS CARDS ─────────────────────────────────────────────────────────────
+function renderStats() {
+  const list = getFacultyList();
+  const total = list.reduce((a,f) => a + RAW.faculty[f].n, 0);
+
+  let totalDist = {1:0,2:0,3:0,4:0,5:0};
+  list.forEach(f => {
+    Object.keys(totalDist).forEach(k => totalDist[k] += RAW.faculty[f].dist[k]);
+  });
+
+  const allScores = list.map(f => RAW.faculty[f].overall * RAW.faculty[f].n);
+  const ns = list.map(f => RAW.faculty[f].n);
+  const overallAvg = allScores.reduce((a,b)=>a+b,0) / ns.reduce((a,b)=>a+b,0);
+
+  const totalRatings = Object.values(totalDist).reduce((a,b)=>a+b,0);
+  const highPct = Math.round((totalDist[4]+totalDist[5])/totalRatings*100);
+  const lowPct = Math.round((totalDist[1])/totalRatings*100);
+
+  const container = document.getElementById('statsGrid');
+  container.innerHTML = `
+    <div class="stat-card accent1">
+      <div class="stat-label">Responses</div>
+      <div class="stat-value">${total}</div>
+      <div class="stat-sub">student evaluations</div>
+    </div>
+    <div class="stat-card ${overallAvg >= 3 ? 'good' : 'danger'}">
+      <div class="stat-label">Overall Avg</div>
+      <div class="stat-value">${overallAvg.toFixed(2)}</div>
+      <div class="stat-sub">out of 5.00</div>
+    </div>
+    <div class="stat-card accent2">
+      <div class="stat-label">High Scores (4–5)</div>
+      <div class="stat-value">${highPct}%</div>
+      <div class="stat-sub">of all ratings</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Poor Scores (1)</div>
+      <div class="stat-value">${lowPct}%</div>
+      <div class="stat-sub">of all ratings</div>
+    </div>
+    <div class="stat-card accent3">
+      <div class="stat-label">Faculty Evaluated</div>
+      <div class="stat-value">${list.length}</div>
+      <div class="stat-sub">${list.join(' & ')}</div>
+    </div>
+  `;
+}
+
+// ── DISTRIBUTION CHART ───────────────────────────────────────────────────────
+function renderDistChart() {
+  destroyChart('dist');
+  const list = getFacultyList();
+  let totalDist = {1:0,2:0,3:0,4:0,5:0};
+  list.forEach(f => Object.keys(totalDist).forEach(k => totalDist[k] += RAW.faculty[f].dist[k]));
+
+  const ctx = document.getElementById('distChart').getContext('2d');
+  charts['dist'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['1 — Poor','2 — Below Avg','3 — Average','4 — Good','5 — Excellent'],
+      datasets: [{
+        data: Object.values(totalDist),
+        backgroundColor: ['#e87c7c','#e8a07c','#e8d07c','#a8e87c','#7ce8a8'],
+        borderRadius: 5,
+        borderSkipped: false
+      }]
+    },
+    options: { ...CHART_DEFAULTS, scales: {
+      x: { ticks: { color: '#8a8a9a', font: { size: 10 } }, grid: { display: false } },
+      y: { ticks: { color: '#8a8a9a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }}
+  });
+}
+
+// ── CATEGORY RADAR ───────────────────────────────────────────────────────────
+function renderCatRadar() {
+  destroyChart('catRadar');
+  const list = getFacultyList();
+  const cats = ["Teaching Quality","Classroom Management","Communication","Subject Knowledge","Assessment & Evaluation","Professionalism"];
+
+  const datasets = [];
+  const colors = [COLOR1, COLOR2];
+  list.forEach((f, i) => {
+    datasets.push({
+      label: f,
+      data: cats.map(c => RAW.faculty[f].categories[c]),
+      backgroundColor: colors[i] + '22',
+      borderColor: colors[i],
+      borderWidth: 2,
+      pointBackgroundColor: colors[i],
+      pointRadius: 4
+    });
+  });
+
+  const ctx = document.getElementById('catRadarChart').getContext('2d');
+  charts['catRadar'] = new Chart(ctx, {
+    type: 'radar',
+    data: { labels: cats, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: list.length > 1, labels: { color: '#8a8a9a', boxWidth: 12, font: { size: 11 } } }, tooltip: { backgroundColor: '#1e1e2a', titleColor: '#f0eeea', bodyColor: '#8a8a9a', borderColor: '#2a2a3a', borderWidth: 1 } },
+      scales: {
+        r: {
+          min: 0, max: 5,
+          ticks: { stepSize: 1, color: '#8a8a9a', font: { size: 9 }, backdropColor: 'transparent' },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          angleLines: { color: 'rgba(255,255,255,0.06)' },
+          pointLabels: { color: '#8a8a9a', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// ── COMPARE BAR CHART ────────────────────────────────────────────────────────
+function renderCompareChart() {
+  destroyChart('compare');
+  const list = getFacultyList();
+  const labels = Object.keys(RAW.faculty["Ms. Kiran Tripathi"].scores);
+
+  const datasets = list.map((f, i) => ({
+    label: f,
+    data: labels.map(l => RAW.faculty[f].scores[l]),
+    backgroundColor: i === 0 ? COLOR1 + 'cc' : COLOR2 + 'cc',
+    borderColor: i === 0 ? COLOR1 : COLOR2,
+    borderWidth: 1,
+    borderRadius: 3,
+    borderSkipped: false
+  }));
+
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  charts['compare'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: list.length > 1, labels: { color: '#8a8a9a', boxWidth: 10, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8a8a9a', font: { size: 9 }, maxRotation: 45 }, grid: { display: false } },
+        y: { min: 0, max: 5, ticks: { color: '#8a8a9a', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ── CATEGORY DETAIL CHARTS ───────────────────────────────────────────────────
+const CAT_MAP = {
+  catTeach: { title: "Teaching Quality", keys: ["Use of real life examples","Makes subject interesting","Constructive feedback","Teaching methodology","Well-prepared for class"] },
+  catClass: { title: "Classroom Management", keys: ["Maintains discipline","Positive learning environment","Equal participation","Punctuality & regularity"] },
+  catComm: { title: "Communication", keys: ["Talks with respect","Body language & tone","Approachable & open to queries"] },
+  catKnow: { title: "Subject Knowledge", keys: ["Subject knowledge","Answers accurately"] },
+  catAss: { title: "Assessment & Evaluation", keys: ["Fair & unbiased grading","Timely performance feedback","Transparent evaluation"] },
+  catProf: { title: "Professionalism", keys: ["Professional behaviour","Inspires confidence","Role model in ethics"] }
+};
+
+function renderCategoryCharts() {
+  const list = getFacultyList();
+  const colors = [COLOR1, COLOR2];
+
+  Object.entries(CAT_MAP).forEach(([id, def]) => {
+    destroyChart(id);
+    const canvasId = id + 'Chart';
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const datasets = list.map((f, i) => ({
+      label: f,
+      data: def.keys.map(k => RAW.faculty[f].scores[k] || 0),
+      backgroundColor: colors[i] + 'bb',
+      borderColor: colors[i],
+      borderWidth: 1,
+      borderRadius: 4,
+      borderSkipped: false
+    }));
+
+    const ctx = canvas.getContext('2d');
+    charts[id] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: def.keys, datasets },
+      options: {
+        ...CHART_DEFAULTS,
+        plugins: { ...CHART_DEFAULTS.plugins, legend: { display: list.length > 1, labels: { color: '#8a8a9a', boxWidth: 8, font: { size: 10 } } } },
+        scales: {
+          x: { ticks: { color: '#8a8a9a', font: { size: 9 }, maxRotation: 35 }, grid: { display: false } },
+          y: { min: 0, max: 5, ticks: { color: '#8a8a9a', font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+  });
+}
+
+// ── QUESTIONS TABLE ──────────────────────────────────────────────────────────
+function renderQuestionsTable() {
+  const list = getFacultyList();
+  const questions = Object.keys(RAW.faculty["Ms. Kiran Tripathi"].scores);
+
+  let html = `<table class="compare-table">
+    <thead><tr>
+      <th style="width:40%">Criterion</th>`;
+  list.forEach(f => html += `<th>${f.replace('Ms. ','')}</th>`);
+  if (list.length > 1) html += `<th>Diff</th>`;
+  html += `</tr></thead><tbody>`;
+
+  questions.forEach(q => {
+    const vals = list.map(f => RAW.faculty[f].scores[q]);
+    html += `<tr><td style="color:var(--text)">${q}</td>`;
+    vals.forEach(v => {
+      html += `<td>
+        <div class="bar-inline">
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${v/5*100}%;background:${scoreColor(v)}"></div>
+          </div>
+          <span class="score-badge ${scoreClass(v)}">${v.toFixed(2)}</span>
+        </div>
+      </td>`;
+    });
+    if (list.length > 1) {
+      const diff = (vals[1] - vals[0]).toFixed(2);
+      const color = diff > 0 ? 'var(--good)' : diff < 0 ? 'var(--danger)' : 'var(--muted)';
+      html += `<td style="color:${color};font-weight:600">${diff > 0 ? '+' : ''}${diff}</td>`;
+    }
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById('questionsTable').innerHTML = html;
+}
+
+// ── COURSE CHARTS ────────────────────────────────────────────────────────────
+function renderCourseCharts() {
+  destroyChart('course');
+  destroyChart('response');
+  destroyChart('polarity');
+
+  const allCourses = [];
+  const courseData = {};
+  Object.keys(RAW.faculty).forEach(f => {
+    Object.entries(RAW.faculty[f].courses).forEach(([c, d]) => {
+      const key = `${f.replace('Ms.','')} — ${c}`;
+      if (!allCourses.includes(key)) allCourses.push(key);
+      courseData[key] = d;
+    });
+  });
+
+  const list = getFacultyList();
+  const filtered = allCourses.filter(k => list.some(f => k.includes(f.replace('Ms.',''))));
+
+  // Course bar
+  const ctx1 = document.getElementById('courseChart').getContext('2d');
+  const bgColors = filtered.map(k => k.includes('Kiran') ? COLOR1 + 'cc' : COLOR2 + 'cc');
+  const bdColors = filtered.map(k => k.includes('Kiran') ? COLOR1 : COLOR2);
+  charts['course'] = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: filtered,
+      datasets: [{
+        data: filtered.map(k => courseData[k].mean),
+        backgroundColor: bgColors,
+        borderColor: bdColors,
+        borderWidth: 1,
+        borderRadius: 5,
+        borderSkipped: false
+      }]
+    },
+    options: { ...CHART_DEFAULTS, scales: {
+      x: { ticks: { color: '#8a8a9a', font: { size: 10 } }, grid: { display: false } },
+      y: { min: 0, max: 5, ticks: { color: '#8a8a9a', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }}
+  });
+
+  // Response count
+  const ctx2 = document.getElementById('responseChart').getContext('2d');
+  charts['response'] = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: filtered,
+      datasets: [{
+        data: filtered.map(k => courseData[k].n),
+        backgroundColor: [COLOR1+'bb', COLOR1+'44', COLOR2+'bb', COLOR2+'44', COLOR3+'bb'],
+        borderColor: 'var(--bg)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', font: { size: 10 }, boxWidth: 10 } }, tooltip: { backgroundColor: '#1e1e2a', titleColor: '#f0eeea', bodyColor: '#8a8a9a', borderColor: '#2a2a3a', borderWidth: 1 } }
+    }
+  });
+
+  // Polarity
+  const ctx3 = document.getElementById('polarityChart').getContext('2d');
+  const polarList = getFacultyList();
+  const lowData = polarList.map(f => {
+    const d = RAW.faculty[f].dist;
+    const total = Object.values(d).reduce((a,b)=>a+b,0);
+    return Math.round(d[1]/total*100);
+  });
+  const highData = polarList.map(f => {
+    const d = RAW.faculty[f].dist;
+    const total = Object.values(d).reduce((a,b)=>a+b,0);
+    return Math.round((d[4]+d[5])/total*100);
+  });
+  charts['polarity'] = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: polarList.map(f => f.replace('Ms.','')),
+      datasets: [
+        { label: '% Poor (1)', data: lowData, backgroundColor: '#e87c7c99', borderColor: '#e87c7c', borderWidth: 1, borderRadius: 4, borderSkipped: false },
+        { label: '% Good/Excellent (4–5)', data: highData, backgroundColor: '#7ce8a899', borderColor: '#7ce8a8', borderWidth: 1, borderRadius: 4, borderSkipped: false }
+      ]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, labels: { color: '#8a8a9a', boxWidth: 10, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8a8a9a', font: { size: 11 } }, grid: { display: false } },
+        y: { max: 100, ticks: { color: '#8a8a9a', font: { size: 10 }, callback: v => v+'%' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ── SUGGESTIONS ──────────────────────────────────────────────────────────────
+function renderSuggestions() {
+  const list = getFacultyList();
+  const filtered = RAW.suggestions.filter(s => list.includes(s.faculty));
+
+  const container = document.getElementById('suggestionsList');
+  if (filtered.length === 0) {
+    container.innerHTML = `<p style="color:var(--muted);padding:12px">No suggestions for selected filter.</p>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(s => `
+    <div class="suggestion-item">
+      <div class="suggestion-meta">
+        <span class="tag">${s.faculty.replace('Ms.','Ms.')}</span>
+        <span>${s.course}</span>
+      </div>
+      "${s.text}"
+    </div>
+  `).join('');
+
+  // Insight summary
+  const negative = filtered.filter(s => /improve|not good|lacking|bad|wrong|boring|ppt/i.test(s.text)).length;
+  const positive = filtered.filter(s => /good|great|well|clear|continue/i.test(s.text)).length;
+  document.getElementById('insightBox').innerHTML = `
+    <strong>Key themes from ${filtered.length} comments:</strong>
+    ${negative} mention concerns about teaching methods, preparation, or communication.
+    ${positive} are positive or encouraging.
+    Common requests: better doubt-clearing, more real examples, avoiding verbatim PPT reading, and improved classroom interaction.
+  `;
+}
+
+// ── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderStats();
+  renderDistChart();
+  renderCatRadar();
+  renderCompareChart();
+  renderCategoryCharts();
+  renderQuestionsTable();
+  renderCourseCharts();
+  renderSuggestions();
+}
+
+// ── EVENTS ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFaculty = btn.dataset.faculty;
+    renderAll();
+  });
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    // Re-render charts in newly visible tab
+    setTimeout(() => {
+      const tab = btn.dataset.tab;
+      if (tab === 'overview') { renderDistChart(); renderCatRadar(); renderCompareChart(); }
+      if (tab === 'categories') renderCategoryCharts();
+      if (tab === 'courses') renderCourseCharts();
+    }, 50);
+  });
+});
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
